@@ -47,7 +47,7 @@ python manage.py createsuperuser  # First deployment only
 gunicorn portal.wsgi:application --bind 127.0.0.1:8000 --workers 2
 ```
 
-Run Gunicorn under a service manager. Configure the HTTPS proxy to serve `/static/` from the release's `staticfiles/` directory and forward other paths to Gunicorn. Redirect HTTP to HTTPS. Django sets HSTS for the staging hostname. Deployment checks may report `security.W005` and `security.W021` because subdomain HSTS and browser preload require a separate domain-wide decision.
+Run Gunicorn under a service manager. WhiteNoise serves `/static/` from the release's collected `staticfiles/` directory through Gunicorn. Forward requests to Gunicorn through the HTTPS proxy. Redirect HTTP to HTTPS. Django sets HSTS for the staging hostname. Deployment checks may report `security.W005` and `security.W021` because subdomain HSTS and browser preload require a separate domain-wide decision.
 
 Verify the login page and its stylesheet over HTTPS. Sign in to Django Admin, add a category and a test staff account, then create a synthetic ticket and verify the HTTPS tracking link in a signed-out browser. Confirm the proxy and monitoring redact tracking URLs, including `/track/` and `/api/v1/track/`. These URLs grant access to a repair. Use a restricted staging environment for any real customer data.
 

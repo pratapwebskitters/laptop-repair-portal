@@ -106,6 +106,7 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
 }
 if not DEBUG:
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
     SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000
     if os.getenv("DJANGO_TRUST_HTTPS_PROXY") == "1":
