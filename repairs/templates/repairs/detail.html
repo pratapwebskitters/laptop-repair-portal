@@ -3,8 +3,40 @@
 {% block title %}{{ ticket.reference }} · Laptop Repair Portal{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'dashboard' %}">← Dashboard</a>
-<div class="page-heading"><div><p class="eyebrow">Repair ticket</p><h1>{{ ticket.reference }}</h1><p class="muted">{{ ticket.laptop_make }} {{ ticket.laptop_model }}</p></div><span class="status-chip status-{{ ticket.status }}">{{ ticket.get_status_display }}</span></div>
-<section class="panel link-panel">
+<header class="page-heading ticket-heading">
+<div>
+<p class="eyebrow">Repair ticket</p>
+<h1>{{ ticket.reference }}</h1>
+<p class="muted">{{ ticket.laptop_make }} {{ ticket.laptop_model }} · {{ ticket.customer_name }}</p>
+</div>
+{% include "repairs/status_badge.html" with decision=sent_estimates.0.decision %}
+</header>
+<div class="ticket-workspace">
+<nav class="panel ticket-menu" aria-label="Ticket sections">
+<p class="eyebrow">Ticket menu</p>
+{% for key, label in sections.items %}
+<a href="?section={{ key }}"{% if section == key %} aria-current="page"{% endif %}>{{ label }}</a>
+{% endfor %}
+</nav>
+<div class="ticket-main">
+<section class="panel ticket-status" id="repair-status"{% if section != "status" %} hidden{% endif %}>
+<h2>Repair status</h2>
+{% if ticket.status == "awaiting_approval" %}
+{% with decision=sent_estimates.0.decision %}
+<p class="muted">{% if decision == "approved" %}The customer approved the current estimate. Select Repairing when work begins.{% elif decision == "declined" %}Send a revised estimate or cancel the ticket.{% else %}The customer can respond through their tracking link.{% endif %}</p>
+{% endwith %}
+{% endif %}
+{% if show_status %}
+<form method="post" class="ticket-status-form">{% csrf_token %}{{ status.as_p }}<button name="action" value="status">Update status</button></form>
+{% else %}
+<p class="muted">{{ ticket.get_status_display }}</p>
+{% endif %}
+</section>
+{% include "repairs/staff_estimates.html" %}
+<section class="panel"{% if section != "details" %} hidden{% endif %}><h2>Ticket details</h2>
+<form method="post">{% csrf_token %}{{ edit.as_p }}<button name="action" value="edit">Save details</button></form>
+</section>
+<section class="panel link-panel"{% if section != "tracking" %} hidden{% endif %}>
 <h2>Customer tracking link</h2>
 <label for="tracking-url">Share this link privately</label>
 <input id="tracking-url" value="{{ tracking_url }}" readonly>
@@ -14,25 +46,20 @@
 <form method="post" id="rotate-link">{% csrf_token %}<button class="button-secondary" name="action" value="rotate">Regenerate link</button></form>
 </div>
 </section>
-<div class="columns">
-<section class="panel"><h2>Ticket details</h2>
-<form method="post">{% csrf_token %}{{ edit.as_p }}<button name="action" value="edit">Save details</button></form>
-</section>
-<div>
-<section class="panel"><h2>Status</h2>
-{% if show_status %}<form method="post">{% csrf_token %}{{ status.as_p }}<button name="action" value="status">Update status</button></form>{% endif %}
-<h3>History</h3><ol class="entries">
+<section class="panel"{% if section != "history" %} hidden{% endif %}><h2>Status history</h2><ol class="entries">
 {% for event in history %}<li>
 {% if event.previous_status %}{{ event.get_previous_status_display }} → {% endif %}{{ event.get_new_status_display }}
 <br>{{ event.actor.get_username }} · {{ event.timestamp|date:"Y-m-d H:i:s" }}
 {% if event.correction_reason %}<br>Correction: {{ event.correction_reason }}{% endif %}
 </li>{% endfor %}</ol>
 </section>
-<section class="panel"><h2>Notes</h2>
+<section class="panel"{% if section != "notes" %} hidden{% endif %}><h2>Notes</h2>
 <form method="post">{% csrf_token %}{{ note.as_p }}<button name="action" value="note">Add note</button></form>
 <ul class="entries">{% for entry in notes %}<li>
 <strong>{{ entry.get_visibility_display }}</strong> · {{ entry.author.get_username }} · {{ entry.timestamp|date:"Y-m-d H:i" }}
 <div class="note-text">{{ entry.text }}</div></li>{% empty %}<li>No notes yet.</li>{% endfor %}</ul>
-</section></div></div>
+</section>
+</div>
+</div>
 <script src="{% static 'repairs/detail.js' %}" defer></script>
 {% endblock %}

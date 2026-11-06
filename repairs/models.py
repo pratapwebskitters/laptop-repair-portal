@@ -1,6 +1,8 @@
 import secrets
+from decimal import Decimal
 
 from django.conf import settings
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 
 
@@ -19,6 +21,7 @@ class Category(models.Model):
 class Status(models.TextChoices):
     RECEIVED = "received", "Received"
     DIAGNOSING = "diagnosing", "Diagnosing"
+    AWAITING_APPROVAL = "awaiting_approval", "Awaiting approval"
     REPAIRING = "repairing", "Repairing"
     READY = "ready", "Ready for pickup"
     PICKED_UP = "picked_up", "Picked up"
@@ -28,6 +31,7 @@ class Status(models.TextChoices):
 class Ticket(models.Model):
     customer_name = models.CharField(max_length=150)
     customer_contact = models.CharField(max_length=250)
+    customer_email = models.EmailField(blank=True)
     laptop_make = models.CharField(max_length=100)
     laptop_model = models.CharField(max_length=100)
     reported_issue = models.TextField()
@@ -94,3 +98,41 @@ class TrackingLink(models.Model):
                 fields=["ticket"], condition=models.Q(revoked_at__isnull=True), name="one_active_tracking_link"
             )
         ]
+
+
+class Estimate(models.Model):
+    class Decision(models.TextChoices):
+        APPROVED = "approved", "Approved"
+        DECLINED = "declined", "Declined"
+
+    ticket = models.ForeignKey(Ticket, related_name="estimates", on_delete=models.PROTECT)
+    version = models.PositiveIntegerField()
+    diagnosis = models.TextField(max_length=4000)
+    proposed_work = models.TextField(max_length=4000)
+    total_price = models.DecimalField(
+        max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0"))],
+    )
+    currency = models.CharField(max_length=3, validators=[
+        RegexValidator(r"\A[A-Z]{3}\Z", "Enter a three-letter currency code such as INR."),
+    ])
+    sent_at = models.DateTimeField(null=True, blank=True)
+    decision = models.CharField(max_length=8, choices=Decision.choices, blank=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-version"]
+        constraints = [
+            models.UniqueConstraint(fields=["ticket", "version"], name="unique_ticket_estimate_version"),
+            models.UniqueConstraint(fields=["ticket"], condition=models.Q(sent_at__isnull=True),
+                                    name="one_draft_estimate_per_ticket"),
+            models.CheckConstraint(condition=models.Q(total_price__gte=0), name="estimate_nonnegative_price"),
+            models.CheckConstraint(
+                condition=models.Q(decision="", decided_at__isnull=True) |
+                models.Q(decision__in=["approved", "declined"], decided_at__isnull=False, sent_at__isnull=False),
+                name="estimate_consistent_decision",
+            ),
+        ]
+
+    @property
+    def decision_label(self):
+        return self.get_decision_display() if self.decision else "Pending"

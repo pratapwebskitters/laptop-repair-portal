@@ -24,7 +24,8 @@
 <thead><tr><th>Reference</th><th>Customer</th><th>Category</th><th>Status</th><th>Pickup estimate</th></tr></thead>
 <tbody>{% for ticket in page %}
 <tr><td><a href="{% url 'ticket' ticket.pk %}">{{ ticket.reference }}</a></td>
-<td>{{ ticket.customer_name }}</td><td>{{ ticket.category }}</td><td><span class="status-chip status-{{ ticket.status }}">{{ ticket.get_status_display }}</span></td>
+<td>{{ ticket.customer_name }}</td><td>{{ ticket.category }}</td><td>{% include "repairs/status_badge.html" with decision=ticket.estimate_decision %}
+{% if ticket.estimate_decision != None %}<div class="estimate-decision muted">Estimate {{ ticket.estimate_decision|default:"pending" }}</div>{% endif %}</td>
 <td>{{ ticket.estimated_pickup|default:"—" }}
 {% if ticket.status in open_statuses and ticket.estimated_pickup and ticket.estimated_pickup < today %}<strong class="overdue">Overdue</strong>{% endif %}</td></tr>
 {% empty %}<tr><td colspan="5">No matching repairs.</td></tr>{% endfor %}</tbody>

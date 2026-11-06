@@ -6,11 +6,14 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .forms import TICKET_FIELDS
-from .models import Category, Note, Status, StatusHistory, Ticket
+from .forms import ESTIMATE_FIELDS, TICKET_FIELDS
+from .models import Category, Estimate, Note, Status, StatusHistory, Ticket
 from .queries import find_tickets, public_link
 from .roles import is_repair_staff
-from .services import add_note, create_ticket, edit_ticket, rotate_link, transition
+from .services import (
+    add_note, create_ticket, current_estimate, edit_ticket, rotate_link, save_estimate_draft,
+    send_estimate, transition,
+)
 
 
 def tracking_url(request, link):
@@ -56,20 +59,39 @@ class TicketSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        return create_ticket(actor=self.context["request"].user, **validated_data)
+        request = self.context["request"]
+        return create_ticket(actor=request.user, request=request, **validated_data)
 
     def update(self, instance, validated_data):
         return edit_ticket(instance, validated_data)
 
 
+class EstimateInputSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Estimate
+        fields = ESTIMATE_FIELDS
+
+
+class PublicEstimateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Estimate
+        fields = ESTIMATE_FIELDS + ("version", "sent_at", "decision", "decided_at")
+
+
+class StaffEstimateSerializer(PublicEstimateSerializer):
+    class Meta(PublicEstimateSerializer.Meta):
+        fields = ("id",) + PublicEstimateSerializer.Meta.fields
+
+
 class TicketDetailSerializer(TicketSerializer):
+    estimates = StaffEstimateSerializer(many=True, read_only=True)
     history = HistorySerializer(many=True, read_only=True)
     notes = NoteSerializer(many=True, read_only=True)
     tracking_url = serializers.SerializerMethodField()
     creator = serializers.CharField(source="creator.get_username", read_only=True)
 
     class Meta(TicketSerializer.Meta):
-        fields = TicketSerializer.Meta.fields + ("history", "notes", "tracking_url", "creator")
+        fields = TicketSerializer.Meta.fields + ("history", "notes", "tracking_url", "creator", "estimates")
 
     def get_tracking_url(self, ticket):
         return tracking_url(self.context["request"], ticket.tracking_links.get(revoked_at__isnull=True))
@@ -166,4 +188,38 @@ class PublicTracking(APIView):
         link = public_link(token)
         if link is None:
             raise NotFound("Tracking link not found.")
-        return Response(PublicTicketSerializer(link.ticket).data)
+        data = PublicTicketSerializer(link.ticket).data
+        estimate = current_estimate(link.ticket)
+        if estimate:
+            data["estimate"] = PublicEstimateSerializer(estimate).data
+        return Response(data)
+
+
+class EstimateDraft(TicketAction):
+    serializer_class = EstimateInputSerializer
+
+    def save_draft(self, request, draft_id=None):
+        ticket = self.get_object()
+        serializer = self.get_serializer(data=request.data, partial=draft_id is not None)
+        serializer.is_valid(raise_exception=True)
+        try:
+            draft = save_estimate_draft(ticket.pk, draft_id, **serializer.validated_data)
+        except DjangoValidationError as error:
+            raise ValidationError(error.messages) from error
+        return Response(StaffEstimateSerializer(draft).data, status=201 if draft_id is None else 200)
+
+    def post(self, request, pk):
+        return self.save_draft(request)
+
+    def patch(self, request, pk, draft_id):
+        return self.save_draft(request, draft_id)
+
+
+class SendEstimate(TicketAction):
+    def post(self, request, pk, draft_id):
+        ticket = self.get_object()
+        try:
+            estimate = send_estimate(ticket.pk, draft_id, request.user)
+        except DjangoValidationError as error:
+            raise ValidationError(error.messages) from error
+        return Response(StaffEstimateSerializer(estimate).data)

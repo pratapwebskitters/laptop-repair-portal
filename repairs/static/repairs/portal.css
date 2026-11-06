@@ -99,3 +99,34 @@ tbody tr:hover { background: #f8faff; }
     .navrow { gap: .55rem; }
     .navrow .button { padding-inline: .6rem; }
 }
+
+.status-awaiting_approval { background: #ede5fb; color: #5d3386; }
+.estimate-decision { margin-top: .25rem; font-size: .8rem; }
+.estimate-summary { padding: 1rem; margin-bottom: 1.5rem; border: 1px solid var(--line); border-radius: .65rem; }
+.estimate-summary dd { margin: 0 0 .65rem; }
+.estimate-send { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+
+.ticket-heading { align-items: center; }
+.ticket-heading .status-chip { font-size: .88rem; padding: .4rem .75rem; }
+.ticket-workspace { display: grid; grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+.ticket-main { min-width: 0; }
+.ticket-workspace .panel { margin: 0 0 1.25rem; }
+.ticket-status { border-left: 4px solid var(--accent); }
+.ticket-status-form { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
+.ticket-status-form > p { flex: 1 1 12rem; margin: 0; }
+.ticket-status-form .errorlist { flex-basis: 100%; margin: 0; }
+.estimate-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; align-items: start; }
+.estimate-current { padding: 1rem; background: #f4f7fc; border-radius: .7rem; }
+.estimate-layout h3 { margin-top: 0; }
+.estimate-current details + details { margin-top: .5rem; }
+.estimate-current summary { cursor: pointer; font-weight: 650; }
+.ticket-menu { padding: .8rem; display: grid; gap: .25rem; }
+.ticket-menu .eyebrow { margin: .4rem .65rem; }
+.ticket-menu a { display: block; padding: .6rem .65rem; border-radius: .45rem; color: var(--ink); text-decoration: none; font-weight: 650; }
+.ticket-menu a:hover { background: #f0f4fc; }
+.ticket-menu a[aria-current="page"] { color: var(--accent-dark); background: #e8edff; }
+@media (max-width: 52rem) {
+    .ticket-workspace { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .ticket-menu { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ticket-menu .eyebrow { grid-column: 1 / -1; }
+}

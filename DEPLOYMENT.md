@@ -96,3 +96,20 @@ node --env-file=.env.local -e 'require("node:child_process").execFileSync("pytho
 ```
 
 For backups on Neon, pass the direct URL as the PostgreSQL connection string using your secret manager. Use a separate direct connection to an empty target for restores.
+
+## Customer tracking email
+
+When staff supply a customer email during intake, Django sends the private tracking link after the ticket commits. The email field is optional for tickets created without an address. Development writes emails to the server console by default.
+
+For hosted delivery, configure the SMTP provider in the app service environment:
+
+| Variable | Value |
+| --- | --- |
+| `EMAIL_HOST`, `EMAIL_PORT` | SMTP hostname and port. The default port is `587`. |
+| `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | Provider credentials. Store the password as a secret. |
+| `EMAIL_USE_TLS`, `EMAIL_USE_SSL` | Use `1` for the provider's encryption mode. STARTTLS is on by default unless implicit TLS is selected. |
+| `DEFAULT_FROM_EMAIL` | A sender address verified with your email provider. |
+| `TRACKING_PUBLIC_ORIGIN` | The public HTTPS origin, such as `https://repairs.example.com`. If omitted, links use the intake request's origin. |
+| `DJANGO_EMAIL_BACKEND` | Defaults to SMTP with debug disabled. |
+
+Verify that the host permits outbound SMTP and send a test ticket to an address you control before enabling customer intake. A send failure is logged by ticket reference. The ticket remains available and staff can share its link manually.

@@ -35,6 +35,16 @@ python manage.py check
 python manage.py makemigrations --check --dry-run
 ```
 
+## Estimates and customer approval
+
+1. Open an active ticket. In **Repair estimates**, enter a customer-facing diagnosis, proposed work, total price, and a three-letter uppercase currency code such as INR. Prices must be nonnegative with up to two decimal places.
+2. Save the draft and edit it as needed. **Send estimate** publishes the saved version to the ticket's existing tracking link and moves the ticket to **Awaiting approval**. Share the link manually. Payment is collected at pickup.
+3. The customer opens the active link and chooses **Approve** or **Decline** in a browser with JavaScript enabled. The tracking page shows the recorded decision on later visits. The decision applies to that exact version.
+4. Use the **Awaiting approval** dashboard filter to see pending, approved, and declined estimates. The ticket stays in this status with its current decision displayed until staff starts an approved repair or cancels. The existing open and overdue counts keep their original status definitions.
+5. Send a new draft to revise the estimate. Sending locks the version's scope and price, supersedes the previous version, and requires a fresh decision. Sending a revision during repair returns the ticket to **Awaiting approval**. Staff can review all sent versions and their decisions on the ticket page.
+
+Run `python manage.py migrate` before serving the updated app. Existing tickets and tracking links carry forward. Tickets without a sent estimate follow the original repair workflow.
+
 ## REST API
 
 Staff authenticate via `/login/`. A client must retain the Django session cookie and send the CSRF cookie value as `X-CSRFToken` with authenticated writes. Use `Content-Type: application/json` for JSON bodies. For same-origin browser code, sign in normally and read the CSRF cookie after visiting a staff form. Successful list responses include `count`, `next`, `previous`, and `results`.
@@ -46,6 +56,9 @@ Staff authenticate via `/login/`. A client must retain the Django session cookie
 | GET | `/api/v1/tickets/{id}/` | Returns ticket details, history, notes, and the active tracking URL. |
 | PATCH | `/api/v1/tickets/{id}/` | Send editable intake fields. Use `null` to clear the pickup estimate. |
 | POST | `/api/v1/tickets/{id}/status/` | Send the expected status and version from the last read, the new status, and a reason for admin corrections. Returns updated details. |
+| POST | `/api/v1/tickets/{id}/estimates/` | Create a draft. Returns 201 and its ID and version. |
+| PATCH | `/api/v1/tickets/{id}/estimates/{estimate_id}/` | Update draft fields. Sent versions reject edits. |
+| POST | `/api/v1/tickets/{id}/estimates/{estimate_id}/send/` | Publish the draft to the active tracking link and move the ticket to `awaiting_approval`. |
 | POST | `/api/v1/tickets/{id}/notes/` | Send `text` and optional `visibility` (`internal` by default, or `customer`). Returns 201 and the note. |
 | POST | `/api/v1/tickets/{id}/tracking-link/` | Returns a replacement `tracking_url`. |
 | GET | `/api/v1/track/{token}/` | Public status and customer-visible updates. Invalid and revoked tokens return the same 404. |
@@ -72,7 +85,20 @@ Example status request for a newly created ticket.
 
 A stale request returns 400 with a message such as `{"status":["The status has changed. Refresh the ticket and try again."]}`. Re-read the detail before deciding whether to submit a new transition. Missing required inputs and invalid choices also return 400. Staff requests without the required session, permissions, or CSRF token return 403. Inactive categories can be retained on existing tickets.
 
-The public API returns an explicit allowlist.
+Staff ticket detail includes `estimates`, newest first, with publication and decision timestamps when available. To create a draft, send:
+
+```json
+{
+  "diagnosis": "The display cable is damaged.",
+  "proposed_work": "Replace the display cable and test the screen.",
+  "total_price": "1500.50",
+  "currency": "INR"
+}
+```
+
+The public tracking page accepts CSRF-protected form POSTs at `/track/{token}/` with `estimate_id` and `choice` (`approved` or `declined`). A repeat of the same choice for the current version returns the existing result. An outdated version or conflicting choice is rejected. The public REST endpoint is read-only. When a version has been sent, its response adds an `estimate` object with diagnosis, proposed work, total price, currency, version, sent timestamp, decision, and decision timestamp. The decision is an empty string while pending. Drafts and superseded versions are excluded.
+
+The public API returns an explicit allowlist. This example shows a ticket without a sent estimate.
 
 ```json
 {

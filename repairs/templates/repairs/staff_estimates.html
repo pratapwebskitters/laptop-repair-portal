@@ -1,0 +1,36 @@
+<section class="panel"{% if section != "estimates" %} hidden{% endif %}>
+<h2>Repair estimates</h2>
+<div class="estimate-layout">
+<div class="estimate-current">
+{% for estimate in sent_estimates %}
+{% if forloop.first %}
+<h3>Current estimate · Version {{ estimate.version }}</h3>
+{% include "repairs/estimate_scope.html" %}
+<p><strong>{{ estimate.decision_label }}</strong>{% if estimate.decided_at %} · {{ estimate.decided_at|date:"j F Y, H:i" }}{% endif %}</p>
+<p class="muted">Sent {{ estimate.sent_at|date:"j F Y, H:i" }}</p>
+{% else %}
+<details>
+<summary>Version {{ estimate.version }} · Superseded{% if estimate.decision %} · {{ estimate.decision_label }}{% endif %}</summary>
+{% include "repairs/estimate_scope.html" %}
+<p>Sent {{ estimate.sent_at|date:"j F Y, H:i" }}{% if estimate.decided_at %} · Decision recorded {{ estimate.decided_at|date:"j F Y, H:i" }}{% endif %}</p>
+</details>
+{% endif %}
+{% empty %}
+<p class="muted">No estimate has been sent.</p>
+{% endfor %}
+</div>
+{% if show_estimate_form %}
+<div class="estimate-editor">
+<h3>{% if draft %}Edit draft · Version {{ draft.version }}{% elif sent_estimates %}Draft a revision{% else %}Draft an estimate{% endif %}</h3>
+<form method="post">{% csrf_token %}{{ estimate_form.as_p }}<button name="action" value="estimate_draft">Save draft</button></form>
+{% if draft or send_form.errors %}
+<form method="post" class="estimate-send">
+{% csrf_token %}{{ send_form.as_p }}
+<p class="muted">Send the saved draft to the current tracking link. Each sent version requires its own decision.</p>
+<button name="action" value="estimate_send">Send estimate</button>
+</form>
+{% endif %}
+</div>
+{% endif %}
+</div>
+</section>

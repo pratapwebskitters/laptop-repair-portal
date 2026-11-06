@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Repair status · {{ reference }}{% endblock %}
 {% block brand %}<span>Laptop Repair Portal</span>{% endblock %}
 {% block navigation %}{% endblock %}
@@ -7,6 +8,31 @@
 <div class="tracking-hero"><p class="eyebrow">Repair status</p><p class="tracking-reference">{{ reference }}</p><h1>{{ status }}</h1></div>
 <div class="tracking-content">
 {% if estimated_pickup %}<p class="pickup"><span>Estimated pickup</span> <strong>{{ estimated_pickup|date:"j F Y" }}</strong></p>{% endif %}
+{% if decision_error %}<p class="errorlist" role="alert">{{ decision_error }}</p>{% endif %}
+{% if estimate %}
+<section class="estimate-summary" aria-labelledby="estimate-heading">
+<h2 id="estimate-heading">Repair estimate</h2>
+<p class="muted">Version {{ estimate.version }}</p>
+{% include "repairs/estimate_scope.html" %}
+{% if can_decide %}
+<form method="post" id="estimate-decision" hidden>
+<div class="controls">
+{% csrf_token %}
+<input type="hidden" name="estimate_id" value="{{ estimate.pk }}">
+<button name="choice" value="approved">Approve</button>
+<button class="button-secondary" name="choice" value="declined">Decline</button>
+</div>
+<p class="errorlist" id="decision-feedback" role="alert"></p>
+</form>
+<noscript><p>Enable JavaScript to submit your decision.</p></noscript>
+<script src="{% static 'repairs/decision.js' %}" defer></script>
+{% elif estimate.decision %}
+<p><strong>{{ estimate.decision_label }}</strong> on {{ estimate.decided_at|date:"j F Y, H:i" }}</p>
+{% else %}
+<p>This estimate is closed for decisions.</p>
+{% endif %}
+</section>
+{% endif %}
 <h2>Updates</h2>
 <ul class="entries timeline">{% for update in updates %}
 <li><time datetime="{{ update.timestamp|date:'c' }}">{{ update.timestamp|date:"j F Y, H:i" }}</time>

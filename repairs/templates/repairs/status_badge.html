@@ -1,0 +1,7 @@
+{% if ticket.status == "awaiting_approval" and decision == "approved" %}
+<span class="status-chip status-ready">Approved · Ready to start</span>
+{% elif ticket.status == "awaiting_approval" and decision == "declined" %}
+<span class="status-chip status-cancelled">Estimate declined</span>
+{% else %}
+<span class="status-chip status-{{ ticket.status }}">{{ ticket.get_status_display }}</span>
+{% endif %}

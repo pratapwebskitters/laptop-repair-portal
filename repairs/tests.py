@@ -2,6 +2,7 @@ from datetime import timedelta
 from urllib.parse import urlsplit
 
 from django.contrib.auth.models import Group, User
+from django.core import mail
 from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -172,3 +173,31 @@ class AcceptanceTests(TestCase):
         self.assertTrue(staff.is_staff)
         self.assertFalse(staff.is_superuser)
         self.assertEqual(self.client.post("/admin/repairs/category/add/", {"name": "Screen", "active": "on"}).status_code, 302)
+
+    @override_settings(TRACKING_PUBLIC_ORIGIN="https://repairs.example.test")
+    def test_intake_emails_only_the_private_link_to_the_customer(self):
+        email = "customer@example.test"
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse("intake"), self.fields | {"customer_email": email})
+        self.assertEqual(response.status_code, 302)
+        ticket = Ticket.objects.latest("pk")
+        link = ticket.tracking_links.get()
+        self.assertEqual(ticket.customer_email, email)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [email])
+        path = reverse("track", args=[link.token])
+        self.assertIn(f"https://repairs.example.test{path}", mail.outbox[0].body)
+        for public_path in (path, "/api/v1" + path):
+            self.assertNotContains(self.customer.get(public_path), email)
+
+    def test_api_emails_valid_addresses_only(self):
+        endpoint = "/api/v1/tickets/"
+        with self.captureOnCommitCallbacks(execute=True):
+            invalid = self.client.post(endpoint, self.fields | {"customer_email": "not-an-email"})
+            self.assertEqual(invalid.status_code, 400)
+            self.assertFalse(Ticket.objects.exists())
+            self.assertEqual(self.client.post(endpoint, self.fields).status_code, 201)
+            result = self.client.post(endpoint, self.fields | {"customer_email": "customer@example.test"})
+            self.assertEqual(result.status_code, 201)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(result.json()["tracking_url"], mail.outbox[0].body)

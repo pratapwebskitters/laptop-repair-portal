@@ -1,11 +1,11 @@
 from django import forms
 from django.db.models import Q
 
-from .models import Category, Note, Status, Ticket
+from .models import Category, Estimate, Note, Status, Ticket
 from .services import NEXT_STATUSES
 
 TICKET_FIELDS = (
-    "customer_name", "customer_contact", "laptop_make", "laptop_model",
+    "customer_name", "customer_contact", "customer_email", "laptop_make", "laptop_model",
     "reported_issue", "category", "estimated_pickup",
 )
 
@@ -46,3 +46,27 @@ class NoteForm(forms.ModelForm):
         model = Note
         fields = ("text", "visibility")
         widgets = {"text": forms.Textarea(attrs={"rows": 3})}
+
+
+ESTIMATE_FIELDS = ("diagnosis", "proposed_work", "total_price", "currency")
+
+
+class EstimateForm(forms.ModelForm):
+    draft_id = forms.IntegerField(min_value=1, max_value=2**63 - 1, required=False, widget=forms.HiddenInput)
+
+    class Meta:
+        model = Estimate
+        fields = ESTIMATE_FIELDS
+        widgets = {
+            "diagnosis": forms.Textarea(attrs={"rows": 3}),
+            "proposed_work": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class SendEstimateForm(forms.Form):
+    draft_id = forms.IntegerField(min_value=1, max_value=2**63 - 1, widget=forms.HiddenInput)
+
+
+class DecisionForm(forms.Form):
+    estimate_id = forms.IntegerField(min_value=1, max_value=2**63 - 1, widget=forms.HiddenInput)
+    choice = forms.ChoiceField(choices=Estimate.Decision.choices)
