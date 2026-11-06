@@ -201,3 +201,23 @@ class AcceptanceTests(TestCase):
             self.assertEqual(result.status_code, 201)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn(result.json()["tracking_url"], mail.outbox[0].body)
+
+    @override_settings(RESEND_API_KEY="test-key", DEFAULT_FROM_EMAIL="repairs@example.test")
+    def test_tracking_email_uses_https_provider_when_configured(self):
+        import json
+        from unittest.mock import patch
+
+        with patch("repairs.services.urlopen") as send:
+            send.return_value.__enter__.return_value.status = 200
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse("intake"), self.fields | {"customer_email": "customer@example.test"},
+                )
+        self.assertEqual(response.status_code, 302)
+        request = send.call_args.args[0]
+        self.assertEqual(request.full_url, "https://api.resend.com/emails")
+        self.assertEqual(request.get_header("Authorization"), "Bearer test-key")
+        payload = json.loads(request.data)
+        self.assertEqual(payload["to"], ["customer@example.test"])
+        self.assertEqual(payload["from"], "repairs@example.test")
+        self.assertIn("/track/", payload["text"])

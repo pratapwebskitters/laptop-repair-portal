@@ -1,4 +1,6 @@
+import json
 import logging
+from urllib.request import Request, urlopen
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -38,16 +40,29 @@ def create_ticket(*, actor, request=None, **fields):
 
 
 def send_tracking_email(ticket, url):
+    subject = f"Track your repair {ticket.reference}"
+    message = (f"Your repair ticket {ticket.reference} is ready to track.\n\n{url}\n\n"
+               "Keep this link private. It gives access to your repair status.")
     try:
-        sent = send_mail(
-            subject=f"Track your repair {ticket.reference}",
-            message=f"Your repair ticket {ticket.reference} is ready to track.\n\n{url}\n\n"
-                    "Keep this link private. It gives access to your repair status.",
-            from_email=None,
-            recipient_list=[ticket.customer_email],
-        )
+        if settings.RESEND_API_KEY:
+            request = Request(
+                "https://api.resend.com/emails",
+                data=json.dumps({
+                    "from": settings.DEFAULT_FROM_EMAIL, "to": [ticket.customer_email],
+                    "subject": subject, "text": message,
+                }).encode(),
+                headers={
+                    "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "laptop-repair-portal/1.0",
+                },
+            )
+            with urlopen(request, timeout=settings.EMAIL_TIMEOUT) as response:
+                sent = 200 <= response.status < 300
+        else:
+            sent = send_mail(subject, message, None, [ticket.customer_email])
     except Exception:
-        # SMTP exceptions can contain addresses or provider details.
+        # Provider errors can contain email addresses or other private details.
         sent = 0
     if not sent:
         logger.warning("Tracking email could not be sent for %s.", ticket.reference)

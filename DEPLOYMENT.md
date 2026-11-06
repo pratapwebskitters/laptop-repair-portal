@@ -101,7 +101,9 @@ For backups on Neon, pass the direct URL as the PostgreSQL connection string usi
 
 When staff supply a customer email during intake, Django sends the private tracking link after the ticket commits. The email field is optional for tickets created without an address. Development writes emails to the server console by default.
 
-For hosted delivery, configure the SMTP provider in the app service environment:
+For a Render Free web service, set `RESEND_API_KEY`, `DEFAULT_FROM_EMAIL` (an address on your verified Resend domain), and `TRACKING_PUBLIC_ORIGIN` in Render's environment settings. The app uses Resend over HTTPS when the key is set. Render Free blocks outbound SMTP on ports 25, 465, and 587.
+
+For hosts that support SMTP, configure the SMTP provider in the app service environment:
 
 | Variable | Value |
 | --- | --- |

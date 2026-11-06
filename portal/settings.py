@@ -125,3 +125,4 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "0" if EMAIL_USE_SSL else "1") == "1"
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "repairs@example.test")
 TRACKING_PUBLIC_ORIGIN = os.getenv("TRACKING_PUBLIC_ORIGIN", "").rstrip("/")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
