@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-link" href="{% url 'dashboard' %}">← Dashboard</a>
+<section class="panel narrow"><p class="eyebrow">Repair intake</p><h1>New repair ticket</h1><p class="muted">Add the customer and laptop details to start tracking this repair.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Create ticket</button></form>
+</section>
+{% endblock %}

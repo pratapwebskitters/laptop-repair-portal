@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Repair status · {{ reference }}{% endblock %}
+{% block brand %}<span>Laptop Repair Portal</span>{% endblock %}
+{% block navigation %}{% endblock %}
+{% block content %}
+<article class="panel narrow tracking-panel">
+<div class="tracking-hero"><p class="eyebrow">Repair status</p><p class="tracking-reference">{{ reference }}</p><h1>{{ status }}</h1></div>
+<div class="tracking-content">
+{% if estimated_pickup %}<p class="pickup"><span>Estimated pickup</span> <strong>{{ estimated_pickup|date:"j F Y" }}</strong></p>{% endif %}
+<h2>Updates</h2>
+<ul class="entries timeline">{% for update in updates %}
+<li><time datetime="{{ update.timestamp|date:'c' }}">{{ update.timestamp|date:"j F Y, H:i" }}</time>
+<div class="note-text">{{ update.text }}</div></li>
+{% empty %}<li>No updates yet.</li>{% endfor %}</ul>
+</div></article>
+{% endblock %}

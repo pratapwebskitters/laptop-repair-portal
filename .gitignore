@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.sqlite3
+staticfiles/
+.env
+.DS_Store
+.neon
+node_modules/
+.env.local
+.env.local

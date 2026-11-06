@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel narrow login-panel"><p class="eyebrow">Service desk</p><h1>Staff sign in</h1><p class="muted">Sign in to manage repair tickets.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}
+<input type="hidden" name="next" value="{{ next }}">
+<button type="submit">Sign in</button></form></section>
+{% endblock %}
